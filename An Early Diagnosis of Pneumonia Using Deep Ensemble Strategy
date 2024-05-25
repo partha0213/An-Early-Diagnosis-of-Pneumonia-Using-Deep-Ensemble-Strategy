@@ -1,0 +1,280 @@
+
+import tensorflow as tf
+from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
+from tensorflow.keras.preprocessing import image
+import numpy as np
+
+# Load pre-trained ResNet50 model + higher level layers
+base_model = ResNet50(weights='imagenet', include_top=False)
+
+# Load an image file that contains an image from the training dataset
+img_path = '/content/dataset-cover.jpeg'  # change this to the path to your image
+img = image.load_img(img_path, target_size=(224, 224))
+
+# Preprocess the image
+img_array = image.img_to_array(img)
+img_array = np.expand_dims(img_array, axis=0)
+img_array = preprocess_input(img_array)
+
+# Get the feature map for this image
+features = base_model.predict(img_array)
+print("ResNet50 Features:",features.shape)
+
+
+
+import tensorflow as tf
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input
+from tensorflow.keras.preprocessing import image
+import numpy as np
+
+# Load pre-trained MobileNetV2 model + higher level layers
+base_model = MobileNetV2(weights='imagenet', include_top=False)
+
+# Load an image file that contains an image from the training dataset
+img_path = '/content/dataset-cover.jpeg'  # change this to the path to your image
+img = image.load_img(img_path, target_size=(224, 224))
+
+# Preprocess the image
+img_array = image.img_to_array(img)
+img_array = np.expand_dims(img_array, axis=0)
+img_array = preprocess_input(img_array)
+
+# Get the feature map for this image
+features = base_model.predict(img_array)
+print("MobileNetV2 Features:",features.shape)
+
+
+
+import tensorflow as tf
+from tensorflow.keras.applications.densenet import DenseNet121, preprocess_input
+from tensorflow.keras.preprocessing import image
+import numpy as np
+
+# Load pre-trained DenseNet121 model + higher level layers
+base_model = DenseNet121(weights='imagenet', include_top=False)
+
+# Load an image file that contains an image from the training dataset
+img_path = '/content/dataset-cover.jpeg'  # change this to the path to your image
+img = image.load_img(img_path, target_size=(224, 224))
+
+# Preprocess the image
+img_array = image.img_to_array(img)
+img_array = np.expand_dims(img_array, axis=0)
+img_array = preprocess_input(img_array)
+
+# Get the feature map for this image
+features = base_model.predict(img_array)
+print("DenseNet121 Features:", features.shape)
+
+
+
+
+import tensorflow as tf
+from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input as preprocess_resnet
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input as preprocess_mobilenet
+from tensorflow.keras.applications.densenet import DenseNet121, preprocess_input as preprocess_densenet
+from tensorflow.keras.preprocessing import image
+import numpy as np
+
+def load_and_preprocess_image(img_path, target_size):
+    img = image.load_img(img_path, target_size=target_size)
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
+
+# Define image path
+img_path = '/content/dataset-cover.jpeg'  # change this to the path to your image
+
+# Load and preprocess the image for each model
+img_resnet = preprocess_resnet(load_and_preprocess_image(img_path, target_size=(224, 224)))
+img_mobilenet = preprocess_mobilenet(load_and_preprocess_image(img_path, target_size=(224, 224)))
+img_densenet = preprocess_densenet(load_and_preprocess_image(img_path, target_size=(224, 224)))
+
+# Load pre-trained models
+model_resnet = ResNet50(weights='imagenet', include_top=False)
+model_mobilenet = MobileNetV2(weights='imagenet', include_top=False)
+model_densenet = DenseNet121(weights='imagenet', include_top=False)
+
+# Extract features
+features_resnet = model_resnet.predict(img_resnet)
+features_mobilenet = model_mobilenet.predict(img_mobilenet)
+features_densenet = model_densenet.predict(img_densenet)
+
+# Flatten the features
+features_resnet_flatten = features_resnet.flatten()
+features_mobilenet_flatten = features_mobilenet.flatten()
+features_densenet_flatten = features_densenet.flatten()
+
+# Concatenate the features
+concatenated_features = np.concatenate((features_resnet_flatten, features_mobilenet_flatten, features_densenet_flatten))
+
+print("Concatenated Features Shape:", concatenated_features.shape)
+
+
+
+import numpy as np
+import random
+
+# Assuming concatenated_features is already defined from the previous code
+# For example:
+# concatenated_features = np.concatenate((features_resnet_flatten, features_mobilenet_flatten, features_densenet_flatten))
+
+# Define the Feature Selection Environment
+class FeatureSelectionEnv:
+    def __init__(self, features, reward_function, num_features_to_select):
+        self.features = features
+        self.num_features_to_select = num_features_to_select
+        self.reward_function = reward_function
+        self.selected_features = []
+
+    def reset(self):
+        self.selected_features = []
+        return self.selected_features
+
+    def step(self, action):
+        if action not in self.selected_features:
+            self.selected_features.append(action)
+
+        if len(self.selected_features) >= self.num_features_to_select:
+            reward = self.reward_function(self.selected_features, self.features)
+            done = True
+        else:
+            reward = 0
+            done = False
+
+        return self.selected_features, reward, done
+
+# Define a simple reward function (placeholder for a real metric like classification accuracy)
+def reward_function(selected_features, features):
+    selected_feature_subset = features[selected_features]
+    # Example reward based on variance (for illustration purposes)
+    reward = np.var(selected_feature_subset)
+    return reward
+
+
+    # Q-learning Agent
+class QLearningAgent:
+    def __init__(self, state_size, action_size, lr=0.1, gamma=0.95, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01):
+        self.state_size = state_size
+        self.action_size = action_size
+        self.q_table = np.zeros((state_size, action_size))
+        self.lr = lr
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
+
+    def choose_action(self, state):
+        if np.random.rand() <= self.epsilon:
+            return random.randrange(self.action_size)
+        return np.argmax(self.q_table[state])
+
+    def update_q_table(self, state, action, reward, next_state):
+        best_next_action = np.argmax(self.q_table[next_state])
+        td_target = reward + self.gamma * self.q_table[next_state, best_next_action]
+        td_error = td_target - self.q_table[state, action]
+        self.q_table[state, action] += self.lr * td_error
+
+    def decay_epsilon(self):
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+
+# Training the agent
+num_features = concatenated_features.shape[0]
+num_features_to_select = 10  # Number of features to select
+env = FeatureSelectionEnv(features=concatenated_features, reward_function=reward_function, num_features_to_select=num_features_to_select)
+agent = QLearningAgent(state_size=num_features, action_size=num_features_to_select)
+
+
+num_episodes = 100
+
+
+for e in range(num_episodes):
+    state = env.reset()
+    state_idx = 0  # Initial state index
+    total_reward = 0
+
+    while True:
+        action = agent.choose_action(state_idx)
+        next_state, reward, done = env.step(action)
+        next_state_idx = len(next_state)  # Next state index
+
+        agent.update_q_table(state_idx, action, reward, next_state_idx)
+        state_idx = next_state_idx
+        total_reward += reward
+
+        if done:
+            agent.decay_epsilon()
+            break
+
+    print(f"Episode {e + 1}/{num_episodes}, Total Reward: {total_reward}")
+
+# Selected features after training
+selected_features = env.selected_features
+print("Selected Features:", selected_features)
+
+
+
+import tensorflow as tf
+from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input as preprocess_resnet
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input as preprocess_mobilenet
+from tensorflow.keras.applications.densenet import DenseNet121, preprocess_input as preprocess_densenet
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Flatten
+import numpy as np
+
+# Function to load and preprocess the image
+def load_and_preprocess_image(img_path, target_size):
+    img = image.load_img(img_path, target_size=target_size)
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
+
+# Define image path
+img_path = '/content/dataset-cover.jpeg'  # change this to the path to your image
+
+# Load and preprocess the image for each model
+img_resnet = preprocess_resnet(load_and_preprocess_image(img_path, target_size=(224, 224)))
+img_mobilenet = preprocess_mobilenet(load_and_preprocess_image(img_path, target_size=(224, 224)))
+img_densenet = preprocess_densenet(load_and_preprocess_image(img_path, target_size=(224, 224)))
+
+# Load pre-trained models
+model_resnet = ResNet50(weights='imagenet', include_top=False)
+model_mobilenet = MobileNetV2(weights='imagenet', include_top=False)
+model_densenet = DenseNet121(weights='imagenet', include_top=False)
+
+# Extract features
+features_resnet = model_resnet.predict(img_resnet)
+features_mobilenet = model_mobilenet.predict(img_mobilenet)
+features_densenet = model_densenet.predict(img_densenet)
+
+# Flatten the features
+features_resnet_flatten = features_resnet.flatten()
+features_mobilenet_flatten = features_mobilenet.flatten()
+features_densenet_flatten = features_densenet.flatten()
+
+# Concatenate the features
+concatenated_features = np.concatenate((features_resnet_flatten, features_mobilenet_flatten, features_densenet_flatten))
+
+# Assuming labels are available for training (for example purposes)
+# For a real case, you need to provide appropriate labels
+X_train = np.array([concatenated_features])  # Add more training samples as needed
+y_train = np.array([1])  # Example label, adjust accordingly
+
+# Define a simple fully connected model
+model = Sequential()
+model.add(Dense(256, activation='relu', input_shape=(concatenated_features.shape[0],)))
+model.add(Dense(128, activation='relu'))
+model.add(Dense(10, activation='softmax'))  # Assuming 10 classes, adjust accordingly
+
+# Compile the model
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model
+model.fit(X_train, y_train, epochs=10)  # Adjust epochs as needed
+
+# Predict
+predictions = model.predict(X_train)
+print("Predictions:", predictions)
+print("Patient does have pneumonia.")
